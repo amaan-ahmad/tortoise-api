@@ -17,6 +17,22 @@ class BrandSerializer(serializers.ModelSerializer):
         fields = ['name', 'id']
 
 
+def is_promotion_valid(plan_id):
+    try:
+        promotion = Promotion.objects.get(plan=plan_id)
+        if(promotion is not None):
+            if(promotion.users_limit is not None):
+                # checks if the promotion has reached the limit of users
+                return CustomerGoals.objects.filter(plan=plan_id).count() < promotion.users_limit
+            if(promotion.start_date is not None and promotion.end_date is not None):
+                # checks if the promotion has not expired
+                return promotion.start_date <= now() and promotion.end_date >= now()
+            else:
+                return False
+    except Promotion.DoesNotExist:
+        return False
+
+
 class PlanSerializer(serializers.ModelSerializer):
 
     is_promoted = serializers.SerializerMethodField('get_promotions')
@@ -27,23 +43,15 @@ class PlanSerializer(serializers.ModelSerializer):
     def get_benefit_percentage(self, obj):
         try:
             promotion = Promotion.objects.get(plan=obj.id)
-            if(promotion is not None):
+            if(is_promotion_valid(obj.id)):
                 return obj.benefit_percentage + promotion.discount
+            else:
+                return obj.benefit_percentage
         except Promotion.DoesNotExist:
             return obj.benefit_percentage
 
     def get_promotions(self, obj):
-        try:
-            promotion = Promotion.objects.get(plan=obj.id)
-            if(promotion is not None):
-                if(promotion.users_limit is not None):
-                    return CustomerGoals.objects.filter(plan=obj.id).count() < promotion.users_limit
-                if(promotion.start_date is not None and promotion.end_date is not None):
-                    return promotion.start_date <= now() and promotion.end_date >= now()
-                else:
-                    return False
-        except Promotion.DoesNotExist:
-            return False
+        return is_promotion_valid(obj.id)
 
     class Meta:
         model = Plan
