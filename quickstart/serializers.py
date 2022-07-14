@@ -1,6 +1,4 @@
 from django.utils.timezone import now
-import dateutil.parser as DP
-from pytz import utc
 from rest_framework import serializers
 from .models import User, Brand, Plan, Promotion, CustomerGoals
 

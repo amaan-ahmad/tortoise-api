@@ -23,6 +23,7 @@ router = routers.DefaultRouter()
 urlpatterns = [
     path('api/users', views.UsersView.as_view()),
     path('api/brands', views.BrandsView.as_view()),
+    path('api/brands/<int:brand_id>/plans', views.PlansView.as_view()),
     path('api/plans', views.PlansView.as_view()),
     path('api/plans/<int:plan_id>/promote', views.PromotionsView.as_view()),
     path('api/plans/<int:plan_id>/enroll', views.EnrollView.as_view()),

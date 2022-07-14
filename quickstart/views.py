@@ -35,8 +35,12 @@ class BrandsView(APIView):
 
 
 class PlansView(APIView):
-    def get(self, request):
-        plans = Plan.objects.all().select_related('brand')
+    def get(self, request, brand_id=None):
+        plans = None
+        if(brand_id is not None):
+            plans = Plan.objects.filter(brand_id=brand_id)
+        else:
+            plans = Plan.objects.all().select_related('brand')
         serializer = PlanSerializer(plans, many=True)
         return Response(serializer.data)
 
