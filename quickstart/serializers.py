@@ -1,5 +1,7 @@
 from django.utils.timezone import now
 from rest_framework import serializers
+
+from quickstart.utils import validate_promotion_data
 from .models import User, Brand, Plan, Promotion, CustomerGoals
 
 
@@ -71,6 +73,11 @@ class PlanCreateSerializer(serializers.ModelSerializer):
 
 class PromotionSerializer(serializers.ModelSerializer):
 
+    def validate(self, attrs):
+        if(not validate_promotion_data(attrs)):
+            raise serializers.ValidationError(('Invalid promotion settings'))
+        return attrs
+
     def create(self, validated_data):
         return Promotion.objects.create(**validated_data)
 
@@ -84,6 +91,18 @@ class CustomerGoalsSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return CustomerGoals.objects.create(**validated_data)
+
+    def validate(self, attrs):
+        plan = attrs['plan']
+        if(attrs['selected_tenure'] not in plan.tenure_options):
+            raise serializers.ValidationError(('Invalid tenure option'))
+
+        if(attrs['selected_amount'] not in plan.amount_options):
+            raise serializers.ValidationError(('Invalid amount option'))
+
+        if(attrs['plan'] is None):
+            raise serializers.ValidationError(('Plan is required'))
+        return attrs
 
     class Meta:
         model = CustomerGoals

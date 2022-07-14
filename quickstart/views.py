@@ -92,7 +92,7 @@ class EnrollView(APIView):
             return Response(serializer.errors)
         except (Plan.DoesNotExist, IntegrityError) as e:
             if(e.__class__.__name__ == 'IntegrityError'):
-                return Response(data=get_error_body("Already Enrolled"), status=400)
+                return Response(data=get_error_body("Already Enrolled"), status=409)
             elif(e.__class__.__name__ == 'DoesNotExist'):
                 return Response(data=get_error_body("Plan does not exists"), status=404)
             else:
