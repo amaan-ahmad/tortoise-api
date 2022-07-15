@@ -64,6 +64,12 @@ class PromotionsView(APIView):
 
     def post(self, request, plan_id):
         request.data['plan'] = plan_id
+        try:
+            # checks if the promotion already exists, if so, it deletes it and creates a new one
+            # had to do this because the serializer does not allow the same plan_id again.
+            Promotion.objects.filter(plan_id=plan_id).delete()
+        except Promotion.DoesNotExist:
+            pass
         serializer = PromotionSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
