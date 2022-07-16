@@ -3,7 +3,7 @@ from .serializers import CustomerGoalsSerializer, PlanCreateSerializer, UserSeri
 from .models import Plan, Promotion, CustomerGoals, User, Brand
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction, DatabaseError
 
 
 class UsersView(APIView):
@@ -80,25 +80,29 @@ class PromotionsView(APIView):
 class EnrollView(APIView):
     def post(self, request, plan_id):
         try:
-            request.data['plan'] = plan_id
-            plan_query = Plan.objects.get(pk=plan_id)
-            plan = PlanSerializer(plan_query, many=False).data
+            with transaction.atomic():
+                request.data['plan'] = plan_id
+                plan_query = Plan.objects.select_for_update(
+                    nowait=True).get(pk=plan_id)
+                plan = PlanSerializer(plan_query, many=False).data
 
-            # * benefit_percentage is already handled by the serializer (increase if promotion applied)
+                # * benefit_percentage is already handled by the serializer (increase if promotion applied)
 
-            request.data['benefit_percentage'] = plan['benefit_percentage']
-            request.data['benefit_type'] = plan['benefit_type']
+                request.data['benefit_percentage'] = plan['benefit_percentage']
+                request.data['benefit_type'] = plan['benefit_type']
 
-            serializer = CustomerGoalsSerializer(data=request.data)
+                serializer = CustomerGoalsSerializer(data=request.data)
 
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data)
-            return Response(serializer.errors)
-        except (Plan.DoesNotExist, IntegrityError) as e:
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(serializer.data)
+                return Response(serializer.errors)
+        except (Plan.DoesNotExist, IntegrityError, DatabaseError) as e:
             if(e.__class__.__name__ == 'IntegrityError'):
                 return Response(data=get_error_body("Already Enrolled"), status=409)
             elif(e.__class__.__name__ == 'DoesNotExist'):
                 return Response(data=get_error_body("Plan does not exists"), status=404)
+            elif(e.__class__.__name__ == 'DatabaseError'):
+                return Response(data=get_error_body("Something went wrong. Retry"), status=500)
             else:
                 return Response(status=500)
